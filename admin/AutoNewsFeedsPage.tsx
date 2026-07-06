@@ -84,6 +84,16 @@ export default function AutoNewsFeedsPage() {
         }
     };
 
+    const handleResetFeedDedup = async (id: string, title: string) => {
+        if (!confirm(`Reset dedup records for "${title}"? This will allow all articles from this feed to be re-imported on the next sync. Existing posts will NOT be deleted.`)) return;
+        try {
+            await fetch(`/api/auto-news-articles?resetFeedDedup=${id}`, { method: "DELETE" });
+            alert("Dedup records cleared. Next sync will re-import all articles from this feed.");
+        } catch {
+            alert("Failed to reset feed");
+        }
+    };
+
     const handleToggleActive = async (feed: Feed) => {
         try {
             await fetch(`/api/auto-news?id=${feed._id}`, {
@@ -100,7 +110,7 @@ export default function AutoNewsFeedsPage() {
         setSyncing(true);
         setSyncResult(null);
         try {
-            const res = await fetch("/api/auto-news-sync", { cache: "no-store" });
+            const res = await fetch("/api/cron/auto-news", { cache: "no-store" });
             const data = await res.json();
             if (data.results) {
                 const lines = data.results.map((r: any) =>
@@ -187,14 +197,24 @@ export default function AutoNewsFeedsPage() {
                 </div>
             )}
 
-            <div className="mt-4 rounded-lg bg-gray-50 border border-gray-200 p-4">
-                <p className="text-xs font-semibold text-gray-700 mb-1">Cron URL (use in external cron service):</p>
-                <code className="text-xs bg-white border rounded px-2 py-1 text-gray-800 break-all select-all">
-                    {typeof window !== "undefined" ? `${window.location.origin}/api/auto-news-sync` : "/api/auto-news-sync"}
-                </code>
-                <p className="text-xs text-gray-400 mt-1">
-                    Set up at <a href="https://cron-job.org" target="_blank" rel="noopener noreferrer" className="underline">cron-job.org</a> or any cron service to call this URL every 15 minutes.
-                </p>
+            <div className="mt-4 rounded-lg bg-gray-50 border border-gray-200 p-4 space-y-3">
+                <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-1">
+                        Cron / External sync URL:
+                    </p>
+                    <code className="text-xs bg-white border rounded px-2 py-1 text-gray-800 break-all select-all block">
+                        {typeof window !== "undefined" ? `${window.location.origin}/api/cron/auto-news` : "/api/cron/auto-news"}
+                    </code>
+                    <p className="text-xs text-gray-400 mt-1">
+                        This URL is called automatically by Vercel Cron every 15 minutes.
+                        You can also schedule it at{" "}
+                        <a href="https://cron-job.org" target="_blank" rel="noopener noreferrer" className="underline">
+                            cron-job.org
+                        </a>{" "}
+                        or any cron service.
+                        Set <code className="bg-gray-100 px-1 rounded">CRON_SECRET</code> in your env vars to secure the endpoint.
+                    </p>
+                </div>
             </div>
 
             <div className="mt-8 overflow-x-auto">
@@ -268,12 +288,21 @@ export default function AutoNewsFeedsPage() {
                                         <button
                                             onClick={() => { setEditingFeed(feed); setShowForm(true); }}
                                             className="text-indigo-600 hover:text-indigo-900"
+                                            title="Edit feed"
                                         >
                                             <Icon icon="solar:pen-bold" width={16} />
                                         </button>
                                         <button
+                                            onClick={() => handleResetFeedDedup(feed._id, feed.title)}
+                                            className="text-orange-500 hover:text-orange-700"
+                                            title="Reset dedup — allow re-import of all articles"
+                                        >
+                                            <Icon icon="solar:restart-bold" width={16} />
+                                        </button>
+                                        <button
                                             onClick={() => handleDelete(feed._id)}
                                             className="text-red-600 hover:text-red-900"
+                                            title="Delete feed"
                                         >
                                             <Icon icon="solar:trash-bin-trash-bold" width={16} />
                                         </button>

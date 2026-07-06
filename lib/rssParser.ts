@@ -40,7 +40,32 @@ export async function parseRSSFeed(url: string): Promise<FeedItem[]> {
 
     for (const item of rawItems) {
         const title = item.title?._ || item.title || "";
-        const link = item.link?.$?.href || item.link?.[0]?.$?.href || item.link?.[0] || item.link || "";
+
+        // Robustly extract link from all known RSS/Atom <link> shapes:
+        // 1. Atom: <link href="..." />           → { $: { href: "..." } }
+        // 2. RSS with explicitArray:false:        → plain string
+        // 3. RSS with explicitArray:true (array): → ["https://..."]
+        // 4. RSS guid used as link fallback
+        let link = "";
+        if (item.link) {
+            if (typeof item.link === "string") {
+                link = item.link;
+            } else if (Array.isArray(item.link)) {
+                // Pick first element that looks like a URL string
+                for (const l of item.link) {
+                    if (typeof l === "string" && l.startsWith("http")) { link = l; break; }
+                    if (l?.$?.href) { link = l.$.href; break; }
+                    if (l?._ ) { link = l._; break; }
+                }
+            } else if (typeof item.link === "object") {
+                link = item.link?.$?.href || item.link?._ || "";
+            }
+        }
+        // Last resort: use guid if it looks like a URL
+        if (!link) {
+            const g = item.guid?._ || item.guid || "";
+            if (typeof g === "string" && g.startsWith("http")) link = g;
+        }
         const pubDate = item.pubDate || item.updated || item.published || "";
         const guid = item.guid?._ || item.guid || item.id || "";
 
@@ -56,10 +81,10 @@ export async function parseRSSFeed(url: string): Promise<FeedItem[]> {
             image = item.enclosure.$.url;
         }
 
-        if (title && link) {
+        if (title && link && link.startsWith("http")) {
             items.push({
-                title: typeof title === "string" ? title : title._ || "",
-                link: typeof link === "string" ? link : "",
+                title: typeof title === "string" ? title : (title as any)._ || "",
+                link,
                 description,
                 pubDate: typeof pubDate === "string" ? pubDate : "",
                 guid: typeof guid === "string" ? guid : "",

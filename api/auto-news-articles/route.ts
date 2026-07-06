@@ -79,6 +79,25 @@ export async function DELETE(req: NextRequest) {
         await connectDB();
         const url = new URL(req.url);
 
+        // Clear all articles (and their posts) for a specific feed
+        if (url.searchParams.get("resetFeed")) {
+            const feedId = url.searchParams.get("resetFeed");
+            const articles = await AutoNewsArticle.find({ feedId }).lean();
+            const postIds = articles.map((a) => a.postId).filter(Boolean);
+            if (postIds.length > 0) {
+                await Post.deleteMany({ _id: { $in: postIds } });
+            }
+            await AutoNewsArticle.deleteMany({ feedId });
+            return NextResponse.json({ success: true, deleted: articles.length });
+        }
+
+        // Clear dedup records only for a feed (keep the posts)
+        if (url.searchParams.get("resetFeedDedup")) {
+            const feedId = url.searchParams.get("resetFeedDedup");
+            const result = await AutoNewsArticle.deleteMany({ feedId });
+            return NextResponse.json({ success: true, deleted: result.deletedCount });
+        }
+
         if (url.searchParams.get("clearAll") === "true") {
             const articles = await AutoNewsArticle.find({}).lean();
             const postIds: string[] = [];

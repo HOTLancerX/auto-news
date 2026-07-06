@@ -197,7 +197,7 @@ export default function AutoNewsSettingsPage() {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold">Posts Per Cron Run</label>
+                        <label className="text-xs font-semibold">Posts Per Cron Run (per feed)</label>
                         <input
                             type="number"
                             min="1"
@@ -207,7 +207,9 @@ export default function AutoNewsSettingsPage() {
                             className="w-full rounded-lg border px-3.5 py-2.5 text-sm outline-none transition focus:border-indigo-500"
                         />
                         <p className="text-xs text-gray-400">
-                            Number of posts to process per feed per cron execution
+                            Maximum new posts to import <strong>per feed</strong> each time the cron runs.
+                            For example, setting this to <strong>3</strong> with 2 active feeds will import
+                            up to 6 posts per cron run. The cron fires every 15 minutes automatically on Vercel.
                         </p>
                     </div>
 
